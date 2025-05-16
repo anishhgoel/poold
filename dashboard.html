@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack - Dashboard</title>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="assets/css/dashboard.css">
+    
+    <!-- Environment Config -->
+    <script src="/env-config.js"></script>
+    
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="header">
+            <div class="logo">
+                <img src="assets/img/logo.png" alt="Stack Logo" height="30">
+                <span>Stack</span>
+            </div>
+            <div class="user-info">
+                <span id="user-name">Loading...</span>
+                <button id="logout-btn" class="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </header>
+        
+        <div class="dashboard-content">
+            <div class="welcome-card">
+                <h1>Welcome to Stack</h1>
+                <p>You are now logged in. This is your dashboard.</p>
+            </div>
+            
+            <div class="subscription-section">
+                <h2>Your Subscriptions</h2>
+                <p>You don't have any subscriptions yet. Start by adding one!</p>
+                <button class="btn-primary">
+                    <i class="fas fa-plus"></i> Add Subscription
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Auth Script -->
+    <script type="module">
+        import { supabaseClient } from './assets/js/supabase-config.js';
+
+        // Wait for Supabase to be initialized
+        function waitForSupabase() {
+            return new Promise((resolve) => {
+                const checkSupabase = () => {
+                    if (supabaseClient) {
+                        resolve();
+                    } else {
+                        setTimeout(checkSupabase, 100);
+                    }
+                };
+                checkSupabase();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Wait for Supabase to be ready
+                await waitForSupabase();
+                
+                const userNameElement = document.getElementById('user-name');
+                const logoutBtn = document.getElementById('logout-btn');
+                
+                // Check if user is authenticated
+                const { data: { user }, error } = await supabaseClient.auth.getUser();
+                
+                if (error || !user) {
+                    console.error('Authentication error:', error);
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                // User is logged in, display user info
+                const userData = user.user_metadata || {};
+                userNameElement.textContent = userData.username || userData.full_name || user.email;
+                
+                // Logout functionality
+                logoutBtn.addEventListener('click', async () => {
+                    try {
+                        const { error } = await supabaseClient.auth.signOut();
+                        if (error) throw error;
+                        window.location.href = 'login.html';
+                    } catch (error) {
+                        console.error('Error signing out:', error);
+                        alert('Error signing out. Please try again.');
+                    }
+                });
+            } catch (error) {
+                console.error('Error initializing dashboard:', error);
+                alert('Error initializing dashboard. Please refresh the page.');
+            }
+        });
+    </script>
+</body>
+</html> 

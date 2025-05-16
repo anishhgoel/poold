@@ -10,6 +10,12 @@
     
     <!-- CSS -->
     <link rel="stylesheet" href="assets/css/styles.css">
+    
+    <!-- Environment Config -->
+    <script src="/env-config.js"></script>
+    
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
@@ -55,7 +61,105 @@
         </div>
     </div>
 
-    <!-- Main JS -->
-    <script src="assets/js/auth.js"></script>
+    <!-- Auth Script -->
+    <script type="module">
+        import { supabaseClient } from './assets/js/supabase-config.js';
+
+        // Wait for Supabase to be initialized
+        function waitForSupabase() {
+            return new Promise((resolve) => {
+                const checkSupabase = () => {
+                    if (supabaseClient) {
+                        resolve();
+                    } else {
+                        setTimeout(checkSupabase, 100);
+                    }
+                };
+                checkSupabase();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Wait for Supabase to be ready
+                await waitForSupabase();
+                
+                const loginForm = document.getElementById('login-form');
+                const loginButton = loginForm.querySelector('.btn-primary');
+                
+                // Check if already logged in
+                const { data } = await supabaseClient.auth.getSession();
+                if (data.session) {
+                    window.location.href = 'dashboard.html';
+                }
+                
+                // Login form submission
+                loginButton.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    
+                    const email = loginForm.querySelector('input[type="email"]').value;
+                    const password = loginForm.querySelector('input[type="password"]').value;
+                    
+                    if (!email || !password) {
+                        alert('Please fill in all fields');
+                        return;
+                    }
+                    
+                    try {
+                        loginButton.disabled = true;
+                        loginButton.textContent = 'Signing in...';
+                        
+                        const { data, error } = await supabaseClient.auth.signInWithPassword({
+                            email,
+                            password
+                        });
+                        
+                        if (error) throw error;
+                        
+                        console.log('User signed in:', data.user);
+                        alert('Login successful! Redirecting to dashboard...');
+                        window.location.href = 'dashboard.html';
+                    } catch (error) {
+                        console.error('Error signing in:', error);
+                        
+                        if (error.message.includes('Invalid login')) {
+                            alert('Invalid email or password');
+                        } else {
+                            alert('Error signing in: ' + error.message);
+                        }
+                    } finally {
+                        loginButton.disabled = false;
+                        loginButton.textContent = 'Sign In';
+                    }
+                });
+                
+                // Google Sign In handler
+                const googleButton = loginForm.querySelector('.google-btn');
+                if (googleButton) {
+                    googleButton.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        
+                        try {
+                            const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                                provider: 'google',
+                                options: {
+                                    redirectTo: `${window.location.origin}/dashboard.html`
+                                }
+                            });
+                            
+                            if (error) throw error;
+                            console.log('Redirecting to Google auth...');
+                        } catch (error) {
+                            console.error('Error signing in with Google:', error);
+                            alert('Error signing in with Google: ' + error.message);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error initializing auth:', error);
+                alert('Error initializing authentication. Please refresh the page.');
+            }
+        });
+    </script>
 </body>
 </html> 
